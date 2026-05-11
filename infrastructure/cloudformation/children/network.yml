@@ -1,0 +1,317 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Vibra Unit 1 - Network child stack for VPC, Subnets, route tables, IGW, and S3 gateway End Point"
+
+Parameters: 
+  EnvironmentName: 
+    Type: String
+    Description: Environment Name such as dev, stage, Prod
+
+  VpcCidr: 
+    Type: String
+    Description: CIDR block for Vpc
+  
+  PublicSubnet1Cidr: 
+    Type: String
+    Description: CIDR block for Public Subnet 1
+
+  PublicSubnet2Cidr:
+    Type: String
+    Description: CIDR block for Public Subnet 2
+
+  PrivateAppSubnet1Cidr:
+    Type: String
+    Description: CIDR block for Private App Subnet 1 
+  
+  PrivateAppSubnet2Cidr:
+    Type: String
+    Description: CIDR block for Private App Subnet 2 
+
+  PrivateDBSubnet1Cidr:
+    Type: String
+    Description: CIDR block for Private DB Subnet 1
+
+  PrivateDBSubnet2Cidr:
+    Type: String
+    Description: CIDR block for Private DB Subnet 2
+
+Resources: 
+# VPC with DNS support and hostnames enabled to allow for better service discovery and internal communication between resources. The VPC is tagged for easy identification and management.
+  vibr0Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 
+        Ref: VpcCidr 
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-Vibr0-vpc"
+
+# IG is created and attached to the VPC to allow resources in public subnets to access the internet and receive inbound traffic. This is essential for load balancers, bastion hosts, and any public-facing services.  
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-Vibr0-IGW"
+  
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: 
+        Ref: vibr0Vpc
+      InternetGatewayId: 
+        Ref: InternetGateway
+
+ # Public subnets, route tables, and associations for load balancers and bastion hosts. These subnets will have direct access to the internet through the IGW. 
+  PublicSubnet1:  
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: 
+        Ref: vibr0Vpc
+      CidrBlock: 
+        Ref: PublicSubnet1Cidr
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-Vibr0-public-subnet-1"
+  
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: 
+        Ref: vibr0Vpc
+      CidrBlock: 
+        Ref: PublicSubnet2Cidr
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-Vibr0-public-subnet-2"
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: 
+        Ref: vibr0Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-Vibr0-public-rt"
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: 
+        Ref: PublicRouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: 
+        Ref: InternetGateway 
+  
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: 
+        Ref: PublicSubnet1
+      RouteTableId: 
+        Ref: PublicRouteTable
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: 
+        Ref: PublicSubnet2
+      RouteTableId: 
+        Ref: PublicRouteTable 
+
+# Private Subnets, Route tables, and associations for application and services instances. and it doesnt have private route to IGW to ensure that these resources are not directly accessible from the internet, enhancing security. These subnets will be used for EC2 instances, ECS tasks, and other resources that should not be exposed publicly.
+  PrivateAppSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: 
+        Ref: vibr0Vpc
+      CidrBlock: 
+        Ref: PrivateAppSubnet1Cidr
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-Vibr0-private-App-subnet-1" 
+
+  PrivateAppSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: 
+        Ref: vibr0Vpc
+      CidrBlock: 
+        Ref: PrivateAppSubnet2Cidr
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-Vibr0-private-App-subnet-2"
+
+  PrivateAppRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: 
+        Ref: vibr0Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-Vibr0-private-App-rt" 
+
+  PrivateAppSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: 
+        Ref: PrivateAppSubnet1
+      RouteTableId: 
+        Ref: PrivateAppRouteTable
+
+  PrivateAppSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: 
+        Ref: PrivateAppSubnet2
+      RouteTableId: 
+        Ref: PrivateAppRouteTable
+
+# Private DB Subnets, Route tables, and associations for database instances. These subnets are specifically designed for database resources, ensuring that they are isolated from both the public subnet and the application subnets. This separation enhances security and allows for better control over database access and traffic. The private DB subnets will be used for RDS instances or any other database services that require enhanced security and isolation.
+  PrivateDBSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: 
+        Ref: vibr0Vpc
+      CidrBlock: 
+        Ref: PrivateDBSubnet1Cidr
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-Vibr0-private-db-subnet-1" 
+
+  PrivateDBSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: 
+        Ref: vibr0Vpc
+      CidrBlock: 
+        Ref: PrivateDBSubnet2Cidr
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-Vibr0-private-db-subnet-2" 
+
+  privateDBRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: 
+        Ref: vibr0Vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-Vibr0-private-db-rt"
+
+  PrivateDBSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: 
+        Ref: PrivateDBSubnet1
+      RouteTableId:   
+        Ref: privateDBRouteTable
+
+  PrivateDBSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: 
+        Ref: PrivateDBSubnet2 
+      RouteTableId: 
+        Ref: privateDBRouteTable
+
+  # S3 Gateway Endpoint is created to allow resources in private subnets to access S3 without traversing the internet, enhancing security and reducing latency. This endpoint is associated with the route tables of both the application and database private subnets, ensuring that any resource within those subnets can access S3 directly through the VPC endpoint.
+  S3GatewayEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId:
+        Ref: vibr0Vpc
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - Ref: PrivateAppRouteTable
+        - Ref: privateDBRouteTable
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-Vibr0-s3-gateway-endpoint"  
+
+# Outputs are defined to provide easy access to the IDs of the created resources,such as VPC, subnets, route tables, IGW, and S3 gateway endpoint. 
+## These outputs can be used in other CloudFormation stacks or for reference in the AWS Management Console, making it easier to integrate and manage the network infrastructure components.
+
+Outputs:
+
+  VpcId:
+    Description: VPC ID
+    Value: 
+      Ref: vibr0Vpc
+
+  PublicSubnet1Id:
+    Description: Public Subnet 1 ID
+    Value: 
+      Ref: PublicSubnet1  
+
+  PublicSubnet2Id:
+    Description: Public Subnet 2 ID
+    Value: 
+      Ref: PublicSubnet2  
+
+  PrivateAppSubnet1Id:
+    Description: Private App Subnet 1 ID
+    Value: 
+      Ref: PrivateAppSubnet1  
+
+  PrivateAppSubnet2Id:
+    Description: Private App Subnet 2 ID
+    Value: 
+      Ref: PrivateAppSubnet2
+
+  PrivateDBSubnet1Id:
+    Description: Private DB Subnet 1 ID
+    Value: 
+      Ref: PrivateDBSubnet1
+
+  PrivateDBSubnet2Id:
+    Description: Private DB Subnet 2 ID
+    Value: 
+      Ref: PrivateDBSubnet2 
+
+  S3GatewayEndpointId:
+    Description: S3 Gateway Endpoint ID
+    Value: 
+      Ref: S3GatewayEndpoint  
+
+  PrivateAppRouteTableId:
+    Description: Private App Route Table ID
+    Value: 
+        Ref: PrivateAppRouteTable 
+
+  PrivateDBRouteTableId:
+    Description: Private DB Route Table ID
+    Value: 
+        Ref: privateDBRouteTable
+
+  PublicRouteTableId:
+    Description: Public Route Table ID
+    Value:  
+          Ref: PublicRouteTable
+          
+  InternetGatewayId:
+    Description: Internet Gateway ID
+    Value:  
+          Ref: InternetGateway  
+
+  AttachGatewayId:
+    Description: VPC Gateway Attachment ID
+    Value:  
+            Ref: AttachGateway
+            
+

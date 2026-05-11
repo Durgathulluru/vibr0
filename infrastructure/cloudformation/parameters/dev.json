@@ -1,0 +1,38 @@
+[
+        {
+            "ParameterKey" : "EnvironmentName",
+            "ParameterValue" : "dev"
+        },
+        {
+            "ParameterKey" : "VpcCidr",
+            "ParameterValue" :  "10.20.0.0/16"
+        },
+        {
+            "ParameterKey" : "PublicSubnet1Cidr",
+            "ParameterValue" : "10.20.1.0/24"
+        },
+        {
+            "ParameterKey": "PublicSubnet2Cidr",
+            "ParameterValue": "10.20.2.0/24"
+        },
+        {
+            "ParameterKey": "PrivateAppSubnet1Cidr",
+            "ParameterValue": "10.20.11.0/24"
+        }, 
+        {
+            "ParameterKey": "PrivateAppSubnet2Cidr", 
+            "ParameterValue": "10.20.12.0/24"
+        },
+        {
+            "ParameterKey": "PrivateDBSubnet1Cidr",
+            "ParameterValue": "10.20.21.0/24"
+        },
+        {
+            "ParameterKey": "PrivateDBSubnet2Cidr",
+            "ParameterValue": "10.20.22.0/24"
+        }, 
+        {
+        "ParameterKey": "TemplateBaseUrl",
+        "ParameterValue": "https://vibra-cfn-artifacts-dev.s3.us-east-1.amazonaws.com"
+        }
+]

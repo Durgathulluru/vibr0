@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Vibra parent stack - deploys nested child stacks"
+
+Parameters:
+  EnvironmentName:
+    Type: String
+
+  TemplateBaseUrl:
+    Type: String
+
+  VpcCidr:
+    Type: String
+
+  PublicSubnet1Cidr:
+    Type: String
+
+  PublicSubnet2Cidr:
+    Type: String
+
+  PrivateAppSubnet1Cidr:
+    Type: String
+
+  PrivateAppSubnet2Cidr:
+    Type: String
+
+  PrivateDBSubnet1Cidr:
+    Type: String
+
+  PrivateDBSubnet2Cidr:
+    Type: String
+
+Resources:
+  NetworkStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${TemplateBaseUrl}/children/network.yml"
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        VpcCidr: !Ref VpcCidr
+        PublicSubnet1Cidr: !Ref PublicSubnet1Cidr
+        PublicSubnet2Cidr: !Ref PublicSubnet2Cidr
+        PrivateAppSubnet1Cidr: !Ref PrivateAppSubnet1Cidr
+        PrivateAppSubnet2Cidr: !Ref PrivateAppSubnet2Cidr
+        PrivateDBSubnet1Cidr: !Ref PrivateDBSubnet1Cidr
+        PrivateDBSubnet2Cidr: !Ref PrivateDBSubnet2Cidr
+
+Outputs:
+  NetworkStackId:
+    Description: Network nested stack ID
+    Value: !Ref NetworkStack
+
+  VpcId:
+    Description: VPC ID from network stack
+    Value: !GetAtt NetworkStack.Outputs.VpcId
+
+  PublicSubnet1Id:
+    Description: Public subnet 1 ID
+    Value: !GetAtt NetworkStack.Outputs.PublicSubnet1Id
+
+  PublicSubnet2Id:
+    Description: Public subnet 2 ID
+    Value: !GetAtt NetworkStack.Outputs.PublicSubnet2Id
+
+  PrivateAppSubnet1Id:
+    Description: Private app subnet 1 ID
+    Value: !GetAtt NetworkStack.Outputs.PrivateAppSubnet1Id
+
+  PrivateAppSubnet2Id:
+    Description: Private app subnet 2 ID
+    Value: !GetAtt NetworkStack.Outputs.PrivateAppSubnet2Id
+
+  PrivateDBSubnet1Id:
+    Description: Private DB subnet 1 ID
+    Value: !GetAtt NetworkStack.Outputs.PrivateDBSubnet1Id
+
+  PrivateDBSubnet2Id:
+    Description: Private DB subnet 2 ID
+    Value: !GetAtt NetworkStack.Outputs.PrivateDBSubnet2Id
