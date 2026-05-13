@@ -14,14 +14,31 @@ on:
       - "infrastructure/**"
       - ".github/workflows/validate-infrastructure.yml"
 
+permissions:
+  id-token: write  # This allows the workflow to obtain an OIDC token for authentication with AWS, which is necessary for validating the CloudFormation templates against AWS services.
+  contents: read  # This allows the workflow to read the repository contents, which is necessary for checking out the code and accessing the CloudFormation templates.
+
 jobs:
   validate-cloudformation:
     name: Validate CloudFormation Templates
     runs-on: ubuntu-latest
+    environment: ${{ github.base_ref == 'develop' && 'dev' || github.base_ref == 'stage' && 'stage' || 'prod' }} # This sets the environment based on the target branch of the pull request, allowing for environment-specific validation if needed.
+
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v6.1.1
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Confirm AWS identity
+        run: aws sts get-caller-identity
 
       - name: Make scripts executable
         run: chmod +x infrastructure/cloudformation/scripts/*.sh
