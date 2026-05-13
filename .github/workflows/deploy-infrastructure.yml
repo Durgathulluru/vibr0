@@ -26,7 +26,7 @@ jobs:
     name: Deploy CloudFormation Infrastructure
     runs-on: ubuntu-latest
 
-    environment: ${{ github.ref_name == 'develoe' && 'dev' || github.ref_name == 'stage' && 'stage' || 'prod' }}
+    environment: ${{ github.ref_name == 'develope' && 'dev' || github.ref_name == 'stage' && 'stage' || 'prod' }}
 
     env:
       ENVIRONMENT_NAME: ${{ vars.ENVIRONMENT_NAME }}
