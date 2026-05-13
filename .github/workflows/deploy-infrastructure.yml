@@ -10,7 +10,7 @@ name: Deploy Infrastructure
 on:
   push:
     branches:
-      - develop
+      - develope
       - stage
       - main
     paths:
