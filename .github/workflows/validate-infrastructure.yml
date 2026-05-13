@@ -1,0 +1,30 @@
+## This GitHub Actions workflow validates CloudFormation templates whenever changes are made to the infrastructure code. 
+## It runs on pull requests targeting the develop, stage, or main branches, and ensures that any modifications to the CloudFormation templates are checked for correctness before being merged. 
+## The validation is performed using a shell script that checks the syntax and structure of the CloudFormation templates against AWS standards.
+
+name: Validate Infrastructure
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - stage
+      - main
+    paths:
+      - "infrastructure/**"
+      - ".github/workflows/validate-infrastructure.yml"
+
+jobs:
+  validate-cloudformation:
+    name: Validate CloudFormation Templates
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Make scripts executable
+        run: chmod +x infrastructure/cloudformation/scripts/*.sh
+
+      - name: Validate CloudFormation templates
+        run: ./infrastructure/cloudformation/scripts/validate-cfn.sh

@@ -1,0 +1,56 @@
+## push/merge to develop → uses GitHub environment dev → deploys Dev AWS account
+## push/merge to stage   → uses GitHub environment stage → deploys Stage AWS account
+## push/merge to main    → uses GitHub environment prod → deploys Prod AWS account 
+## This GitHub Actions workflow deploys CloudFormation infrastructure whenever changes are pushed to the develop, stage, or main branches. 
+## It uses GitHub environments to manage different AWS accounts for each environment (dev, stage, prod). 
+## The workflow configures AWS credentials using OIDC for secure access, validates the CloudFormation templates, and then deploys the parent CloudFormation stack to the appropriate AWS account based on the branch that was pushed.
+
+name: Deploy Infrastructure
+
+on:
+  push:
+    branches:
+      - develop
+      - stage
+      - main
+    paths:
+      - "infrastructure/**"
+      - ".github/workflows/deploy-infrastructure.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy CloudFormation Infrastructure
+    runs-on: ubuntu-latest
+
+    environment: ${{ github.ref_name == 'develop' && 'dev' || github.ref_name == 'stage' && 'stage' || 'prod' }}
+
+    env:
+      ENVIRONMENT_NAME: ${{ vars.ENVIRONMENT_NAME }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      CFN_ARTIFACT_BUCKET: ${{ vars.CFN_ARTIFACT_BUCKET }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v6.1.1
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Confirm AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Make scripts executable
+        run: chmod +x infrastructure/cloudformation/scripts/*.sh
+
+      - name: Upload nested child templates
+        run: ./infrastructure/cloudformation/scripts/upload-child-templates.sh "$ENVIRONMENT_NAME"
+
+      - name: Deploy parent CloudFormation stack
+        run: ./infrastructure/cloudformation/scripts/deploy-parent-stack.sh "$ENVIRONMENT_NAME"

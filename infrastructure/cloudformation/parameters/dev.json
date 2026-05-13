@@ -33,6 +33,6 @@
         }, 
         {
         "ParameterKey": "TemplateBaseUrl",
-        "ParameterValue": "https://vibra-cfn-artifacts-dev.s3.us-east-1.amazonaws.com"
+        "ParameterValue": "https://vibra-cfn-artifacts-dev.s3.us-west-1.amazonaws.com"
         }
 ]
