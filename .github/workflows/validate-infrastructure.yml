@@ -22,7 +22,7 @@ jobs:
   validate-cloudformation:
     name: Validate CloudFormation Templates
     runs-on: ubuntu-latest
-    environment: ${{ github.base_ref == 'develop' && 'dev' || github.base_ref == 'stage' && 'stage' || 'prod' }} # This sets the environment based on the target branch of the pull request, allowing for environment-specific validation if needed.
+    environment: ${{ github.base_ref == 'develope' && 'dev' || github.base_ref == 'stage' && 'stage' || 'prod' }} # This sets the environment based on the target branch of the pull request, allowing for environment-specific validation if needed.
 
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
